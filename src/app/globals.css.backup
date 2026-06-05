@@ -1,0 +1,292 @@
+@import "tailwindcss";
+@import url('https://fonts.googleapis.com/css2?family=Noto+Sans+Thai:wght@100;200;300;400;500;600;700;800;900&display=swap');
+
+/* CSS variables for shadcn/ui components */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 207 65% 39%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 208 43% 59%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 37 97% 54%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 207 65% 39%;
+  --chart-1: 37 97% 54%;
+  --chart-2: 207 65% 39%;
+  --chart-3: 208 43% 59%;
+  --chart-4: 38 95% 56%;
+  --chart-5: 27 87% 67%;
+  --radius: 0.5rem;
+}
+
+/* Apply Noto Sans Thai font globally */
+* {
+  font-family: "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  font-family: "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  font-family: "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Font Utilities */
+.font-noto-thai {
+  font-family: "Noto Sans Thai", sans-serif !important;
+  font-optical-sizing: auto;
+  font-variation-settings: "wdth" 100;
+}
+
+/* Custom Color Utilities - Complete Color System */
+
+/* Background Colors */
+.bg-primary-blue { background-color: #176daf !important; }
+.bg-secondary-blue { background-color: #5c9ad2 !important; }
+.bg-primary-yellow { background-color: #fe9813 !important; }
+.bg-secondary-yellow { background-color: #febf12 !important; }
+
+/* Light background variants */
+.bg-primary-blue-light { background-color: #e3f2fd; }
+.bg-secondary-blue-light { background-color: #f0f8ff; }
+.bg-primary-yellow-light { background-color: #fff8e1; }
+.bg-secondary-yellow-light { background-color: #fffde7; }
+
+/* Text Colors */
+.text-primary-blue { color: #176daf !important; }
+.text-secondary-blue { color: #5c9ad2 !important; }
+.text-primary-yellow { color: #fe9813; }
+.text-secondary-yellow { color: #febf12; }
+
+/* Border Colors */
+.border-primary-blue { border-color: #176daf; }
+.border-secondary-blue { border-color: #5c9ad2; }
+.border-primary-yellow { border-color: #fe9813; }
+.border-secondary-yellow { border-color: #febf12; }
+
+/* Hover States */
+.hover\:bg-primary-blue:hover { background-color: #145a92; }
+.hover\:bg-secondary-blue:hover { background-color: #4a8bc2; }
+.hover\:bg-primary-yellow:hover { background-color: #e8870f; }
+.hover\:bg-secondary-yellow:hover { background-color: #e5ab0e; }
+
+.hover\:text-primary-blue:hover { color: #176daf; }
+.hover\:text-secondary-blue:hover { color: #5c9ad2; }
+.hover\:text-primary-yellow:hover { color: #fe9813; }
+.hover\:text-secondary-yellow:hover { color: #febf12; }
+
+/* Focus States */
+.focus\:ring-primary-blue:focus { --tw-ring-color: #176daf; }
+.focus\:ring-secondary-blue:focus { --tw-ring-color: #5c9ad2; }
+.focus\:ring-primary-yellow:focus { --tw-ring-color: #fe9813; }
+.focus\:ring-secondary-yellow:focus { --tw-ring-color: #febf12; }
+
+.focus\:border-primary-blue:focus { border-color: #176daf; }
+.focus\:border-secondary-blue:focus { border-color: #5c9ad2; }
+.focus\:border-primary-yellow:focus { border-color: #fe9813; }
+.focus\:border-secondary-yellow:focus { border-color: #febf12; }
+
+/* Gradient Utilities */
+.from-primary-blue { --tw-gradient-from: #176daf; }
+.to-secondary-blue { --tw-gradient-to: #5c9ad2; }
+.from-primary-yellow { --tw-gradient-from: #fe9813; }
+.to-secondary-yellow { --tw-gradient-to: #febf12; }
+
+/* Custom utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.scale-102 {
+  transform: scale(1.02);
+}
+
+/* Verification animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 2s infinite;
+}
+
+/* Modern Form Input Styles */
+.modern-input {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  background-color: white;
+  border: 2px solid rgb(229 231 235);
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.modern-input:hover {
+  border-color: rgb(156 163 175);
+}
+
+.modern-input:focus {
+  border-color: #176daf;
+  box-shadow: 0 0 0 3px rgba(23, 109, 175, 0.1);
+}
+
+.modern-input.error {
+  border-color: rgb(252 165 165);
+}
+
+.modern-input.error:focus {
+  border-color: rgb(239 68 68);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.modern-input.success {
+  border-color: rgb(134 239 172);
+}
+
+.modern-input.success:focus {
+  border-color: rgb(34 197 94);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.modern-input::placeholder {
+  color: rgb(156 163 175);
+}
+
+/* Enhanced Auth Layout Styles */
+.auth-gradient-bg {
+  background: linear-gradient(135deg, #176daf 0%, #5c9ad2 50%, #176daf 100%);
+  background-size: 200% 200%;
+  animation: gradientShift 8s ease infinite;
+}
+
+@keyframes gradientShift {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
+}
+
+/* Glassmorphism Effect */
+.glass-effect {
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  background: rgba(255, 255, 255, 0.1);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+/* Enhanced Divider */
+.auth-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+}
+
+.auth-divider::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgb(209 213 219), transparent);
+}
+
+.auth-divider span {
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+  background: white;
+}
+
+/* Form Validation Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+/* Success Animation */
+@keyframes checkmark {
+  0% { stroke-dashoffset: 100; }
+  100% { stroke-dashoffset: 0; }
+}
+
+.checkmark {
+  stroke-dasharray: 100;
+  animation: checkmark 0.5s ease-in-out;
+}
+
+/* Mobile safe area for bottom navigation */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom);
+}
+
+/* Mobile main content padding */
+@media (max-width: 767px) {
+  .mobile-content-padding {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 0px));
+  }
+
+  /* Specific padding for pages with pagination or long content */
+  .mobile-page-content {
+    padding-bottom: calc(8rem + env(safe-area-inset-bottom, 0px));
+    min-height: calc(100vh - 8rem);
+  }
+
+  /* Smooth scrolling for mobile */
+  html {
+    scroll-behavior: smooth;
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent horizontal scroll on mobile */
+  body {
+    overflow-x: hidden;
+  }
+
+  /* Mobile Auth Adjustments */
+  .modern-input {
+    padding: 0.75rem 1rem;
+    font-size: 1rem;
+  }
+}

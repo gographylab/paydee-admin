@@ -1,0 +1,312 @@
+@import "tailwindcss";
+
+/* CSS variables for shadcn/ui components */
+:root {
+  --background: 0 0% 100%;
+  --foreground: 240 10% 3.9%;
+  --card: 0 0% 100%;
+  --card-foreground: 240 10% 3.9%;
+  --popover: 0 0% 100%;
+  --popover-foreground: 240 10% 3.9%;
+  --primary: 207 65% 39%;
+  --primary-foreground: 0 0% 98%;
+  --secondary: 208 43% 59%;
+  --secondary-foreground: 0 0% 98%;
+  --muted: 240 4.8% 95.9%;
+  --muted-foreground: 240 3.8% 46.1%;
+  --accent: 37 97% 54%;
+  --accent-foreground: 0 0% 98%;
+  --destructive: 0 84.2% 60.2%;
+  --destructive-foreground: 0 0% 98%;
+  --border: 240 5.9% 90%;
+  --input: 240 5.9% 90%;
+  --ring: 207 65% 39%;
+  --chart-1: 37 97% 54%;
+  --chart-2: 207 65% 39%;
+  --chart-3: 208 43% 59%;
+  --chart-4: 38 95% 56%;
+  --chart-5: 27 87% 67%;
+  --radius: 0.5rem;
+}
+
+/* Apply Noto Sans Thai font globally */
+* {
+  font-family: "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+html {
+  font-family: "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+}
+
+body {
+  font-family: "Noto Sans Thai", -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, sans-serif;
+  -webkit-font-smoothing: antialiased;
+  -moz-osx-font-smoothing: grayscale;
+}
+
+/* Custom Font Utilities - Updated with Google Fonts best practices */
+.font-noto-thai {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+.noto-sans-thai-thin {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 100;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+.noto-sans-thai-light {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 300;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+.noto-sans-thai-regular {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 400;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+.noto-sans-thai-medium {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 500;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+.noto-sans-thai-semibold {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 600;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+.noto-sans-thai-bold {
+  font-family: "Noto Sans Thai", sans-serif;
+  font-optical-sizing: auto;
+  font-weight: 700;
+  font-style: normal;
+  font-variation-settings: "wdth" 100;
+}
+
+/* Custom Color Utilities - Complete Color System */
+
+/* Background Colors */
+.bg-primary-blue { background-color: #176daf !important; }
+.bg-secondary-blue { background-color: #5c9ad2 !important; }
+.bg-primary-yellow { background-color: #fe9813 !important; }
+.bg-secondary-yellow { background-color: #febf12 !important; }
+
+/* Text Colors */
+.text-primary-blue { color: #176daf !important; }
+.text-secondary-blue { color: #5c9ad2 !important; }
+.text-primary-yellow { color: #fe9813; }
+.text-secondary-yellow { color: #febf12; }
+
+/* Custom utilities */
+.line-clamp-2 {
+  display: -webkit-box;
+  -webkit-line-clamp: 2;
+  line-clamp: 2;
+  -webkit-box-orient: vertical;
+  overflow: hidden;
+}
+
+.scale-102 {
+  transform: scale(1.02);
+}
+
+/* Verification animations */
+@keyframes fadeIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.animate-fadeIn {
+  animation: fadeIn 0.5s ease-out;
+}
+
+@keyframes gentle-pulse {
+  0%, 100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.8;
+  }
+}
+
+.animate-gentle-pulse {
+  animation: gentle-pulse 2s infinite;
+}
+
+/* Modern Form Input Styles */
+.modern-input {
+  width: 100%;
+  padding: 1rem;
+  font-size: 1rem;
+  background-color: white;
+  border: 2px solid rgb(229 231 235);
+  border-radius: 0.75rem;
+  transition: all 0.2s;
+  outline: none;
+}
+
+.modern-input:hover {
+  border-color: rgb(156 163 175);
+}
+
+.modern-input:focus {
+  border-color: #176daf;
+  box-shadow: 0 0 0 3px rgba(23, 109, 175, 0.1);
+}
+
+.modern-input.error {
+  border-color: rgb(252 165 165);
+}
+
+.modern-input.error:focus {
+  border-color: rgb(239 68 68);
+  box-shadow: 0 0 0 3px rgba(239, 68, 68, 0.1);
+}
+
+.modern-input.success {
+  border-color: rgb(134 239 172);
+}
+
+.modern-input.success:focus {
+  border-color: rgb(34 197 94);
+  box-shadow: 0 0 0 3px rgba(34, 197, 94, 0.1);
+}
+
+.modern-input::placeholder {
+  color: rgb(156 163 175);
+}
+
+/* Enhanced Divider */
+.auth-divider {
+  position: relative;
+  display: flex;
+  align-items: center;
+  margin: 1.5rem 0;
+}
+
+.auth-divider::before {
+  content: '';
+  flex: 1;
+  height: 1px;
+  background: linear-gradient(to right, transparent, rgb(209 213 219), transparent);
+}
+
+.auth-divider span {
+  padding: 0 1rem;
+  font-size: 0.875rem;
+  color: rgb(107 114 128);
+  background: white;
+}
+
+/* Form Validation Animations */
+@keyframes shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-4px); }
+  75% { transform: translateX(4px); }
+}
+
+.shake {
+  animation: shake 0.3s ease-in-out;
+}
+
+/* Mobile viewport fixes */
+html {
+  height: 100%;
+  /* Fix viewport height issues on mobile browsers */
+  height: -webkit-fill-available;
+}
+
+body {
+  height: 100%;
+  /* Prevent horizontal scroll on mobile */
+  overflow-x: hidden;
+  /* Fix iOS bounce scrolling */
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-y: none;
+}
+
+/* Mobile safe area for bottom navigation */
+.safe-area-inset-bottom {
+  padding-bottom: env(safe-area-inset-bottom, 16px);
+}
+
+/* Prevent overscroll bounce effect */
+.overscroll-y-contain {
+  overscroll-behavior-y: contain;
+}
+
+/* Mobile layout fixes */
+@media (max-width: 767px) {
+  /* Fix mobile viewport height */
+  .h-screen {
+    height: 100vh;
+    height: -webkit-fill-available;
+  }
+
+  /* Mobile content padding */
+  .mobile-content-padding {
+    padding-bottom: calc(5rem + env(safe-area-inset-bottom, 16px));
+  }
+
+  .mobile-page-content {
+    padding-bottom: calc(6rem + env(safe-area-inset-bottom, 16px));
+    min-height: calc(100vh - 6rem);
+    min-height: calc(-webkit-fill-available - 6rem);
+  }
+
+  /* Touch scrolling */
+  html {
+    -webkit-overflow-scrolling: touch;
+  }
+
+  /* Prevent zoom on input focus */
+  input[type="text"],
+  input[type="email"],
+  input[type="password"],
+  input[type="tel"],
+  textarea {
+    font-size: 16px;
+  }
+
+  .modern-input {
+    padding: 0.75rem 1rem;
+    font-size: 16px; /* Prevent zoom on iOS */
+  }
+
+  /* Fix touch targets */
+  button, a, [role="button"] {
+    min-height: 44px;
+    min-width: 44px;
+  }
+
+  /* Prevent text selection on navigation */
+  .bottom-nav, .mobile-nav {
+    -webkit-user-select: none;
+    user-select: none;
+    -webkit-touch-callout: none;
+  }
+}

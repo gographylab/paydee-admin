@@ -1,0 +1,22 @@
+{
+  "name": "Paydee Seller Program",
+  "short_name": "Paydee",
+  "description": "แพลตฟอร์มสำหรับผู้ขายทัวร์และทริปท่องเที่ยว",
+  "start_url": "/",
+  "display": "standalone",
+  "background_color": "#ffffff",
+  "theme_color": "#176daf",
+  "icons": [
+    {
+      "src": "/favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    },
+    {
+      "src": "/images/paydeeLOGO.svg",
+      "sizes": "512x512",
+      "type": "image/svg+xml"
+    }
+  ]
+}
