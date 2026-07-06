@@ -90,13 +90,14 @@ export function useAuthForm(): UseAuthFormReturn {
         }
 
         if (authData.user) {
-          // Create user profile
+          // Create user profile — public registration always creates a seller;
+          // admin roles are granted only by an existing admin, never from the client
           const { error: profileError } = await supabase
             .from('user_profiles')
             .insert({
               id: authData.user.id,
               email: authData.user.email,
-              role,
+              role: 'seller',
               status: 'pending'
             })
 
@@ -107,7 +108,7 @@ export function useAuthForm(): UseAuthFormReturn {
 
           toast.success('ลงทะเบียนสำเร็จ รอการอนุมัติจากแอดมิน')
           setIsRedirecting(true)
-          router.push(getRedirectPath(role))
+          router.push(getRedirectPath('seller'))
         }
       }
     } catch (err) {
@@ -125,9 +126,9 @@ export function useAuthForm(): UseAuthFormReturn {
       
       let redirectUrl
       if (currentDomain === 'app.paydee.me' || process.env.NEXT_PUBLIC_SITE_URL?.includes('app.paydee.me')) {
-        redirectUrl = `https://app.paydee.me/auth/callback?next=${encodeURIComponent(redirectPath)}&role=${role}`
+        redirectUrl = `https://app.paydee.me/auth/callback?next=${encodeURIComponent(redirectPath)}`
       } else {
-        redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}&role=${role}`
+        redirectUrl = `${window.location.origin}/auth/callback?next=${encodeURIComponent(redirectPath)}`
       }
 
       const { error } = await supabase.auth.signInWithOAuth({

@@ -3,7 +3,6 @@
 import { useState, Suspense } from 'react'
 import * as React from 'react'
 import { useSearchParams } from 'next/navigation'
-import Link from 'next/link'
 import { AuthLayout, AuthButton } from '@/components/auth'
 import { useAuthForm } from '@/hooks/useAuthForm'
 import { Input } from '@/components/ui/input'
@@ -43,14 +42,7 @@ function LoginForm() {
   return (
     <AuthLayout
       title="เข้าสู่ระบบ"
-      subtitle={
-        <>
-          ยังไม่มีบัญชี?{' '}
-          <Link href="/auth/register" className="font-medium text-primary-yellow hover:text-secondary-blue">
-            สมัครสมาชิก
-          </Link>
-        </>
-      }
+      subtitle="สำหรับผู้ดูแลระบบเท่านั้น"
       error={displayError}
       errorId="login-error"
     >

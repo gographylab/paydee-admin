@@ -2,7 +2,12 @@ import { createServerClient } from '@supabase/ssr'
 import { NextResponse, type NextRequest } from 'next/server'
 import { apiCache } from '@/lib/cache'
 
+// Admin-only site: no public /book funnel, no self-registration
+const PUBLIC_PREFIXES = ['/auth/login', '/auth/callback', '/api/docs', '/api-docs']
+
 export async function middleware(request: NextRequest) {
+  const pathname = request.nextUrl.pathname
+
   let supabaseResponse = NextResponse.next({
     request,
   })
@@ -28,55 +33,57 @@ export async function middleware(request: NextRequest) {
     }
   )
 
-  const {
-    data: { user },
-  } = await supabase.auth.getUser()
+  // Redirect that preserves any refreshed session cookies
+  const redirect = (to: string) => {
+    const res = NextResponse.redirect(new URL(to, request.url))
+    supabaseResponse.cookies.getAll().forEach(cookie => res.cookies.set(cookie))
+    return res
+  }
 
-  // Get user profile if user exists (with caching)
-  let userProfile = null
-  if (user) {
-    // Check cache first
-    const profileCacheKey = `user_profile_${user.id}`
-    userProfile = apiCache.get(profileCacheKey)
+  // Validates the JWT locally against cached JWKS when possible — much faster
+  // than getUser(), which hits the Auth server on every request
+  const { data } = await supabase.auth.getClaims()
+  const userId = data?.claims?.sub ?? null
 
-    if (!userProfile) {
-      // Cache miss - fetch from database
-      const { data } = await supabase
-        .from('user_profiles')
-        .select('*')
-        .eq('id', user.id)
-        .single()
-      userProfile = data
+  const isPublicRoute = PUBLIC_PREFIXES.some(p => pathname.startsWith(p))
 
-      // Cache for 1 minute
-      if (userProfile) {
-        apiCache.set(profileCacheKey, userProfile, 60000)
-      }
+  if (!userId) {
+    if (isPublicRoute || pathname === '/') {
+      return supabaseResponse
+    }
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
+    }
+    return redirect('/auth/login')
+  }
+
+  // Get user profile (role only, cached 1 minute)
+  const profileCacheKey = `user_profile_${userId}`
+  let userProfile = apiCache.get(profileCacheKey) as { role: string } | null
+  if (!userProfile) {
+    const { data: profile } = await supabase
+      .from('user_profiles')
+      .select('role')
+      .eq('id', userId)
+      .single()
+    userProfile = profile
+    if (userProfile) {
+      apiCache.set(profileCacheKey, userProfile, 60000)
     }
   }
 
-  const url = request.nextUrl.clone()
-
-  // Public routes that don't require authentication (no /book for admin site)
-  const publicRoutes = ['/auth/login', '/auth/register', '/auth/callback', '/api/docs', '/api-docs']
-  const isPublicRoute = publicRoutes.some(route => url.pathname.startsWith(route))
-
-  if (!user && !isPublicRoute && url.pathname !== '/') {
-    // Redirect unauthenticated users to login
-    return NextResponse.redirect(new URL('/auth/login', request.url))
+  // No profile row, or not an admin → this site is not for them
+  if (!userProfile || userProfile.role !== 'admin') {
+    await supabase.auth.signOut()
+    if (pathname.startsWith('/api/')) {
+      return NextResponse.json({ error: 'Admin access required' }, { status: 403 })
+    }
+    return redirect('/auth/login?error=Admin access required')
   }
 
-  if (user && userProfile) {
-    // Non-admin users should not use admin site
-    if (userProfile.role !== 'admin') {
-      await supabase.auth.signOut()
-      return NextResponse.redirect(new URL('/auth/login?error=Admin access required', request.url))
-    }
-
-    // Redirect authenticated admins away from auth pages
-    if (isPublicRoute) {
-      return NextResponse.redirect(new URL('/dashboard/admin/sellers', request.url))
-    }
+  // Redirect authenticated admins away from auth pages
+  if (isPublicRoute) {
+    return redirect('/dashboard/admin/sellers')
   }
 
   return supabaseResponse
@@ -84,6 +91,6 @@ export async function middleware(request: NextRequest) {
 
 export const config = {
   matcher: [
-    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp)$).*)',
+    '/((?!_next/static|_next/image|favicon.ico|.*\\.(?:svg|png|jpg|jpeg|gif|webp|ico|css|js|map)$).*)',
   ],
 }
