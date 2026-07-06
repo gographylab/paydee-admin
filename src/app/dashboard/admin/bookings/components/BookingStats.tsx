@@ -37,9 +37,6 @@ interface BookingStatsProps {
 }
 
 export default function BookingStats({ bookings }: BookingStatsProps) {
-  // Debug: ดู status ของ bookings ทั้งหมด
-  console.log('Bookings status:', bookings.map(b => ({ id: b.id, status: b.status, total_amount: b.total_amount, commission_amount: b.commission_amount })))
-
   const totalBookings = bookings.length
   const pendingBookings = bookings.filter(b => b.status === 'pending').length
   const approvedBookings = bookings.filter(b => b.status === 'approved').length
@@ -47,24 +44,19 @@ export default function BookingStats({ bookings }: BookingStatsProps) {
   const cancelledBookings = bookings.filter(b => b.status === 'cancelled').length
   const inProgressBookings = bookings.filter(b => b.status === 'inprogress').length
 
-  // คำนวณยอดขายจาก bookings ที่มีการชำระเงินแล้วเท่านั้น
+  // คำนวณยอดขาย/คอมมิชชั่นจาก bookings ที่มีการชำระเงินแล้วเท่านั้น
+  // payment_status ที่มีจริงในระบบ: pending / partial / completed / refunded
+  const isPaid = (b: BookingWithDetails) =>
+    !['cancelled', 'rejected'].includes(b.status || '') &&
+    ['partial', 'completed'].includes(b.payment_status || '')
+
   const totalRevenue = bookings
-    .filter(b => ['approved', 'confirmed'].includes(b.status || '') && 
-                 ['deposit_paid', 'fully_paid'].includes(b.payment_status || ''))
+    .filter(isPaid)
     .reduce((sum, b) => sum + (b.total_amount || 0), 0)
 
-  // คำนวณคอมมิชชั่นจาก bookings ที่มีการชำระเงินแล้วเท่านั้น  
   const totalCommission = bookings
-    .filter(b => ['approved', 'confirmed'].includes(b.status || '') && 
-                 ['deposit_paid', 'fully_paid'].includes(b.payment_status || ''))
+    .filter(isPaid)
     .reduce((sum, b) => sum + (b.commission_amount || 0), 0)
-
-  console.log('Revenue calculation:', {
-    filteredBookings: bookings.filter(b => ['approved', 'confirmed'].includes(b.status || '') && 
-                                           ['deposit_paid', 'fully_paid'].includes(b.payment_status || '')),
-    totalRevenue,
-    totalCommission
-  })
 
   const stats = [
     {

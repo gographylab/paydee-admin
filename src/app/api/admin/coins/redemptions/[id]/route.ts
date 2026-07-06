@@ -26,8 +26,9 @@ export async function PATCH(
     const supabase = await createClient()
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -35,7 +36,7 @@ export async function PATCH(
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (profile?.role !== 'admin') {
@@ -68,14 +69,17 @@ export async function PATCH(
       status
     }
 
+    let balance_before = 0
+    let total_redeemed_before = 0
+
     if (status === 'approved') {
       updateData.approved_at = new Date().toISOString()
-      updateData.approved_by = user.id
+      updateData.approved_by = userId
 
       // Get current balance
       const { data: currentBalance, error: balanceError } = await adminSupabase
         .from('seller_coins')
-        .select('redeemable_balance')
+        .select('redeemable_balance, total_redeemed')
         .eq('seller_id', redemption.seller_id)
         .single()
 
@@ -84,15 +88,52 @@ export async function PATCH(
         return NextResponse.json({ error: 'Failed to fetch current balance' }, { status: 500 })
       }
 
-      const balance_before = currentBalance?.redeemable_balance || 0
-      const balance_after = balance_before - redemption.coin_amount
+      balance_before = currentBalance?.redeemable_balance || 0
+      total_redeemed_before = currentBalance?.total_redeemed || 0
 
       // Ensure balance doesn't go negative
-      if (balance_after < 0) {
+      if (balance_before < redemption.coin_amount) {
         return NextResponse.json({
           error: `Cannot deduct ${redemption.coin_amount} coins. Seller only has ${balance_before} coins available.`
         }, { status: 400 })
       }
+    }
+
+    if (status === 'rejected') {
+      updateData.rejection_reason = rejection_reason
+    }
+
+    if (status === 'paid') {
+      updateData.paid_at = new Date().toISOString()
+    }
+
+    if (notes) {
+      updateData.notes = notes
+    }
+
+    // Claim the status transition first with a conditional update — a second admin
+    // (or a retry) hitting the same redemption gets 0 rows and stops, so coins
+    // can never be deducted twice for one redemption
+    const allowedFromStatuses: ('pending' | 'approved')[] = status === 'paid' ? ['pending', 'approved'] : ['pending']
+    const { data: updatedRedemption, error: updateError } = await supabase
+      .from('coin_redemptions')
+      .update(updateData)
+      .eq('id', id)
+      .in('status', allowedFromStatuses)
+      .select()
+      .maybeSingle()
+
+    if (updateError) {
+      console.error('Error updating redemption:', updateError)
+      return NextResponse.json({ error: 'Failed to update redemption' }, { status: 500 })
+    }
+
+    if (!updatedRedemption) {
+      return NextResponse.json({ error: 'Redemption was already processed by someone else' }, { status: 409 })
+    }
+
+    if (status === 'approved') {
+      const balance_after = balance_before - redemption.coin_amount
 
       // Insert redemption transaction
       const { error: deductError } = await adminSupabase
@@ -115,15 +156,15 @@ export async function PATCH(
 
       if (deductError) {
         console.error('Error deducting coins:', deductError)
-        return NextResponse.json({ error: 'Failed to deduct coins: ' + deductError.message }, { status: 500 })
+        return NextResponse.json({ error: 'Redemption approved but coin deduction failed: ' + deductError.message }, { status: 500 })
       }
 
-      // Update seller_coins balance
+      // Update seller_coins balance (total_redeemed accumulates, never overwritten)
       const { error: updateBalanceError } = await adminSupabase
         .from('seller_coins')
         .update({
           redeemable_balance: balance_after,
-          total_redeemed: redemption.coin_amount,
+          total_redeemed: total_redeemed_before + redemption.coin_amount,
           updated_at: new Date().toISOString()
         })
         .eq('seller_id', redemption.seller_id)
@@ -134,31 +175,6 @@ export async function PATCH(
           error: 'Transaction recorded but balance update failed. Please check manually.'
         }, { status: 500 })
       }
-    }
-
-    if (status === 'rejected') {
-      updateData.rejection_reason = rejection_reason
-    }
-
-    if (status === 'paid') {
-      updateData.paid_at = new Date().toISOString()
-    }
-
-    if (notes) {
-      updateData.notes = notes
-    }
-
-    // Update redemption
-    const { data: updatedRedemption, error: updateError } = await supabase
-      .from('coin_redemptions')
-      .update(updateData)
-      .eq('id', id)
-      .select()
-      .single()
-
-    if (updateError) {
-      console.error('Error updating redemption:', updateError)
-      return NextResponse.json({ error: 'Failed to update redemption' }, { status: 500 })
     }
 
     return NextResponse.json({

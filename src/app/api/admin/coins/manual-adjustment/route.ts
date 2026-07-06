@@ -21,8 +21,9 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -30,7 +31,7 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role, email')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (profile?.role !== 'admin') {
@@ -55,7 +56,7 @@ export async function POST(request: NextRequest) {
     // Get current balance
     const { data: currentBalance, error: balanceError } = await adminSupabase
       .from('seller_coins')
-      .select('redeemable_balance')
+      .select('redeemable_balance, total_earned')
       .eq('seller_id', seller_id)
       .single()
 
@@ -66,6 +67,8 @@ export async function POST(request: NextRequest) {
 
     const balance_before = currentBalance?.redeemable_balance || 0
     const balance_after = balance_before + amount
+    // Bonuses count toward lifetime earnings; deductions don't reduce them
+    const total_earned_after = (currentBalance?.total_earned || 0) + (amount > 0 ? amount : 0)
 
     // Ensure balance doesn't go negative
     if (balance_after < 0) {
@@ -89,7 +92,7 @@ export async function POST(request: NextRequest) {
         balance_after,
         description,
         metadata: {
-          adjusted_by: user.id,
+          adjusted_by: userId,
           adjusted_by_email: profile.email || '',
           reason: reason || '',
           manual_adjustment: true
@@ -105,14 +108,18 @@ export async function POST(request: NextRequest) {
 
     const transactionId = transaction?.id
 
-    // Update seller_coins balance
-    const { error: updateError } = await adminSupabase
+    // Update seller_coins balance — guarded on the balance we read, so a
+    // concurrent adjustment/redemption can't be silently overwritten
+    const { data: updatedRows, error: updateError } = await adminSupabase
       .from('seller_coins')
       .update({
         redeemable_balance: balance_after,
+        total_earned: total_earned_after,
         updated_at: new Date().toISOString()
       })
       .eq('seller_id', seller_id)
+      .eq('redeemable_balance', balance_before)
+      .select('seller_id')
 
     if (updateError) {
       console.error('Error updating seller balance:', updateError)
@@ -120,6 +127,17 @@ export async function POST(request: NextRequest) {
       return NextResponse.json({
         error: 'Transaction recorded but balance update failed. Please check manually.'
       }, { status: 500 })
+    }
+
+    if (!updatedRows || updatedRows.length === 0) {
+      // Balance changed between read and write (another admin action / redemption)
+      // — roll back the ledger entry we just made so it matches reality
+      if (transactionId) {
+        await adminSupabase.from('coin_transactions').delete().eq('id', transactionId)
+      }
+      return NextResponse.json({
+        error: 'Balance changed while processing. Please retry the adjustment.'
+      }, { status: 409 })
     }
 
     // Get updated balance

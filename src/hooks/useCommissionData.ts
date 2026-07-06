@@ -225,7 +225,7 @@ export const useBookingCommissionFlow = (bookingId: string) => {
       }
 
       // หา commission payments แต่ละประเภท
-      const depositCommission = commissionPayments?.find(cp => cp.payment_type === 'deposit_commission')
+      const depositCommission = commissionPayments?.find(cp => cp.payment_type === 'partial_commission')
       const finalCommission = commissionPayments?.find(cp => cp.payment_type === 'final_commission')
 
       // คำนวณยอดที่ได้และรอได้

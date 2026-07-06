@@ -13,15 +13,16 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
     
     // Check admin permission
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (profile?.role !== 'admin') {
@@ -107,15 +108,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     
     // Check admin permission
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (profile?.role !== 'admin') {
@@ -146,7 +148,7 @@ export async function POST(request: NextRequest) {
         cover_image_url: formData.cover_image_url,
         file_link: formData.file_link,
         is_active: formData.is_active,
-        created_by: user.id
+        created_by: userId
       })
       .select()
       .single()

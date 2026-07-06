@@ -10,15 +10,16 @@ export async function GET() {
     const supabase = await createClient()
 
     // Check if user is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (!profile || profile.role !== 'admin') {
@@ -52,15 +53,16 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // Check if user is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (!profile || profile.role !== 'admin') {
@@ -103,7 +105,7 @@ export async function POST(request: NextRequest) {
         start_date,
         end_date,
         is_active: is_active !== undefined ? is_active : true,
-        created_by: user.id
+        created_by: userId
       })
       .select()
       .single()

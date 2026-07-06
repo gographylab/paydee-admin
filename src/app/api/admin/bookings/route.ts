@@ -17,15 +17,16 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     // Check admin permission
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (profile?.role !== 'admin') {
@@ -33,7 +34,7 @@ export async function GET(request: NextRequest) {
     }
 
     // OPTIMIZED: Check cache first
-    const cacheKey = `admin_bookings_${user.id}_${page}_${pageSize}_${search}_${status}_${paymentStatus}_${sellerId}`
+    const cacheKey = `admin_bookings_${userId}_${page}_${pageSize}_${search}_${status}_${paymentStatus}_${sellerId}`
     const cached = apiCache.get(cacheKey)
     if (cached) {
       const response = NextResponse.json(cached)
@@ -59,12 +60,6 @@ export async function GET(request: NextRequest) {
         updated_at
       `, { count: 'exact' })
 
-    // Apply search filter - search across customer name, email, trip title
-    // We'll handle search after fetching related data
-    // if (search) {
-    //   query = query.or(`customers.full_name.ilike.%${search}%,customers.email.ilike.%${search}%,trip_schedules.trips.title.ilike.%${search}%`)
-    // }
-
     // Apply status filter
     if (status && status !== 'all') {
       query = query.eq('status', status)
@@ -84,10 +79,20 @@ export async function GET(request: NextRequest) {
       }
     }
 
-    // Apply pagination
-    const from = (page - 1) * pageSize
-    const to = from + pageSize - 1
-    query = query.range(from, to).order('created_at', { ascending: false })
+    query = query.order('created_at', { ascending: false })
+
+    // Search matches customer name/email and trip title, which live on related
+    // tables fetched separately below (not embedded in this select) - PostgREST
+    // can't express an OR across bookings + multiple related tables in one filter.
+    // With a search term: pull a bounded recent window and filter/paginate in JS
+    // so totalCount reflects the search. Without one: keep the normal paged query.
+    if (search) {
+      query = query.limit(500)
+    } else {
+      const from = (page - 1) * pageSize
+      const to = from + pageSize - 1
+      query = query.range(from, to)
+    }
 
     const { data: bookings, error, count } = await query
 
@@ -185,21 +190,26 @@ export async function GET(request: NextRequest) {
       commission_payments: commissionsMap.get(booking.id) || []
     })) || []
 
-    // Apply search filter here after data is combined
-    let filteredBookings = bookingsWithRelations
+    // Apply search filter here after data is combined, then paginate the filtered
+    // set (totalCount must reflect the search, not just the status/seller filters)
+    let pagedBookings = bookingsWithRelations
+    let totalCount = count || 0
     if (search) {
-      filteredBookings = bookingsWithRelations.filter(booking =>
+      const filteredBookings = bookingsWithRelations.filter(booking =>
         booking.customers?.full_name?.toLowerCase().includes(search.toLowerCase()) ||
         booking.customers?.email?.toLowerCase().includes(search.toLowerCase()) ||
         booking.trip_schedules?.trips?.title?.toLowerCase().includes(search.toLowerCase())
       )
+      totalCount = filteredBookings.length
+      const from = (page - 1) * pageSize
+      pagedBookings = filteredBookings.slice(from, from + pageSize)
     }
 
     const responseData = {
-      bookings: filteredBookings,
-      totalCount: count || 0,
+      bookings: pagedBookings,
+      totalCount,
       currentPage: page,
-      totalPages: Math.ceil((count || 0) / pageSize),
+      totalPages: Math.ceil(totalCount / pageSize),
       pageSize
     }
 

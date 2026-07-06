@@ -7,8 +7,9 @@ export async function GET(request: NextRequest) {
     const supabase = await createClient()
 
     // Get current user
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -16,7 +17,7 @@ export async function GET(request: NextRequest) {
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (profile?.role !== 'admin') {
@@ -32,26 +33,23 @@ export async function GET(request: NextRequest) {
       return NextResponse.json(cachedResult)
     }
 
-    // Get total coins distributed
-    const { data: totalEarnedData } = await supabase
-      .from('seller_coins')
-      .select('total_earned')
+    // Get every seller_coins row once and derive all four aggregates from it,
+    // plus the active campaigns count, in parallel
+    const [{ data: sellerCoinsData }, { count: activeCampaignsCount }] = await Promise.all([
+      supabase
+        .from('seller_coins')
+        .select('total_earned, total_redeemed, locked_balance, redeemable_balance'),
+      supabase
+        .from('coin_bonus_campaigns')
+        .select('*', { count: 'exact', head: true })
+        .eq('is_active', true)
+    ])
 
-    const totalDistributed = totalEarnedData?.reduce((sum, item) => sum + (Number(item.total_earned) || 0), 0) || 0
+    const totalDistributed = sellerCoinsData?.reduce((sum, item) => sum + (Number(item.total_earned) || 0), 0) || 0
 
-    // Get total coins redeemed
-    const { data: totalRedeemedData } = await supabase
-      .from('seller_coins')
-      .select('total_redeemed')
+    const totalRedeemed = sellerCoinsData?.reduce((sum, item) => sum + (Number(item.total_redeemed) || 0), 0) || 0
 
-    const totalRedeemed = totalRedeemedData?.reduce((sum, item) => sum + (Number(item.total_redeemed) || 0), 0) || 0
-
-    // Get current total balance (locked + redeemable)
-    const { data: balanceData } = await supabase
-      .from('seller_coins')
-      .select('locked_balance, redeemable_balance')
-
-    const currentBalance = balanceData?.reduce((sum, item: any) =>
+    const currentBalance = sellerCoinsData?.reduce((sum, item: any) =>
       sum + (Number(item.locked_balance) || 0) + (Number(item.redeemable_balance) || 0), 0) || 0
 
     // Get pending redemptions
@@ -72,16 +70,8 @@ export async function GET(request: NextRequest) {
     const approvedCoins = approvedRedemptions?.reduce((sum, item) => sum + (Number(item.coin_amount) || 0), 0) || 0
     const approvedCash = approvedRedemptions?.reduce((sum, item) => sum + (Number(item.cash_amount) || 0), 0) || 0
 
-    // Get active gamification campaigns count
-    // Note: gamification_campaigns table might not exist yet
-    const activeCampaignsCount = 0
-
     // Get active sellers with coins
-    const { data: sellersData } = await supabase
-      .from('seller_coins')
-      .select('locked_balance, redeemable_balance')
-
-    const sellersWithCoinsCount = sellersData?.filter((s: any) =>
+    const sellersWithCoinsCount = sellerCoinsData?.filter((s: any) =>
       ((Number(s.locked_balance) || 0) + (Number(s.redeemable_balance) || 0)) > 0
     ).length || 0
 

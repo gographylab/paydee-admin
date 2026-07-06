@@ -52,9 +52,10 @@ export async function POST(request: NextRequest) {
     )
 
     // Check if user is admin with improved error handling
-    const { data: { user }, error: userError } = await supabase.auth.getUser()
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
 
-    if (userError || !user) {
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -62,14 +63,14 @@ export async function POST(request: NextRequest) {
     }
 
     // Cache admin check for 2 minutes to reduce DB load
-    const adminCacheKey = `admin_role_${user.id}`
+    const adminCacheKey = `admin_role_${userId}`
     let isAdmin = apiCache.get(adminCacheKey)
 
     if (isAdmin === undefined || isAdmin === null) {
       const { data: profile, error: profileError } = await supabase
         .from('user_profiles')
         .select('role, status')
-        .eq('id', user.id)
+        .eq('id', userId)
         .single()
 
       if (profileError) {
@@ -103,7 +104,7 @@ export async function POST(request: NextRequest) {
           updated_at: new Date().toISOString(),
           ...(status === 'approved' ? { 
             approved_at: new Date().toISOString(),
-            approved_by: user.id 
+            approved_by: userId 
           } : {})
         })
         .eq('id', bookingId)
@@ -114,7 +115,7 @@ export async function POST(request: NextRequest) {
       }
 
       // OPTIMIZED: Clear admin bookings cache for this user
-      apiCache.clearPattern(`admin_bookings_${user.id}`)
+      apiCache.clearPattern(`admin_bookings_${userId}`)
 
       return { 
         success: true, 

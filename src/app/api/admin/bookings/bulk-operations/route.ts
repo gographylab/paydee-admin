@@ -17,8 +17,9 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // Check if user is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -29,7 +30,7 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (!profile || profile.role !== 'admin') {
@@ -46,7 +47,7 @@ export async function POST(request: NextRequest) {
       case 'approve':
         updateData.status = 'approved'
         updateData.approved_at = new Date().toISOString()
-        updateData.approved_by = user.id
+        updateData.approved_by = userId
         message = 'อนุมัติการจองสำเร็จ'
         break
 

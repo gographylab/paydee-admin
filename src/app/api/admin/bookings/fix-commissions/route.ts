@@ -1,4 +1,5 @@
 import { createClient } from '@/lib/supabase/server'
+import { createAdminClient } from '@/lib/supabase/admin'
 import { NextRequest, NextResponse } from 'next/server'
 import { createCommissionPayments, calculateCommission } from '@/utils/commissionUtils'
 
@@ -7,23 +8,27 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // Check if user is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (!profile || profile.role !== 'admin') {
       return NextResponse.json({ error: 'Forbidden' }, { status: 403 })
     }
 
+    // commission_payments has no RLS INSERT policy — writes need the admin client
+    const adminSupabase = createAdminClient()
+
     // Get all bookings with sellers that don't have commission payments
-    const { data: bookingsWithoutCommissions } = await supabase
+    const { data: bookingsWithoutCommissions } = await adminSupabase
       .from('bookings')
       .select(`
         id,
@@ -41,24 +46,28 @@ export async function POST(request: NextRequest) {
       .not('seller_id', 'is', null)
 
     if (!bookingsWithoutCommissions || bookingsWithoutCommissions.length === 0) {
-      return NextResponse.json({ 
+      return NextResponse.json({
         message: 'No bookings with sellers found',
-        created: 0 
+        created: 0
       })
     }
+
+    // Fetch all existing commission_payments for these bookings in one query
+    // instead of checking each booking individually (avoids N+1)
+    const candidateBookingIds = bookingsWithoutCommissions.map(b => b.id)
+    const { data: existingCommissions } = await adminSupabase
+      .from('commission_payments')
+      .select('booking_id')
+      .in('booking_id', candidateBookingIds)
+
+    const bookingIdsWithCommissions = new Set(existingCommissions?.map(c => c.booking_id) || [])
 
     let createdCount = 0
     let errors: string[] = []
 
     for (const booking of bookingsWithoutCommissions) {
       try {
-        // Check if commission payments already exist
-        const { data: existingCommissions } = await supabase
-          .from('commission_payments')
-          .select('id')
-          .eq('booking_id', booking.id)
-
-        if (existingCommissions && existingCommissions.length > 0) {
+        if (bookingIdsWithCommissions.has(booking.id)) {
           continue // Skip if already has commission payments
         }
 
@@ -72,8 +81,7 @@ export async function POST(request: NextRequest) {
           trip.commission_type as 'fixed' | 'percentage'
         )
 
-        // Create commission payments
-        await createCommissionPayments(booking.id, booking.seller_id, commissionCalc)
+        await createCommissionPayments(booking.id, booking.seller_id, commissionCalc, adminSupabase)
         createdCount++
 
       } catch (error) {

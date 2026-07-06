@@ -9,8 +9,9 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
     
     // Check authentication
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json({ error: 'Unauthorized' }, { status: 401 })
     }
 
@@ -18,7 +19,7 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (!profile || profile.role !== 'admin') {
@@ -91,23 +92,34 @@ export async function POST(request: NextRequest) {
       return trip.commission_value
     }
 
+    // Seller referral + commission split are the same for every customer in
+    // this batch — fetch/compute once instead of once per customer
+    let sellerData: { referral_code: string | null } | null = null
+    if (selectedSellerId) {
+      const { data: seller } = await adminSupabase
+        .from('user_profiles')
+        .select('referral_code')
+        .eq('id', selectedSellerId)
+        .single()
+      sellerData = seller
+    }
+
+    const commissionCalc = selectedSellerId
+      ? calculateCommission(
+          trip.price_per_person,
+          trip.commission_value,
+          trip.commission_type as 'fixed' | 'percentage'
+        )
+      : null
+
     const createdBookings = []
 
     // Create customers and bookings
+    // ponytail: seat check above is not transactional with these inserts — a
+    // concurrent booking can oversell; fix by moving into one SQL function
     for (let i = 0; i < customers.length; i++) {
       const customerData = customers[i]
       const isMainCustomer = i === 0
-
-      // Get seller data for referral
-      let sellerData = null
-      if (selectedSellerId) {
-        const { data: seller } = await adminSupabase
-          .from('user_profiles')
-          .select('referral_code')
-          .eq('id', selectedSellerId)
-          .single()
-        sellerData = seller
-      }
 
       // Create customer
       const { data: customer, error: customerError } = await adminSupabase
@@ -143,13 +155,7 @@ export async function POST(request: NextRequest) {
       if (bookingError) throw bookingError
 
       // Create commission payments if there's a seller
-      if (selectedSellerId && trip) {
-        const commissionCalc = calculateCommission(
-          trip.price_per_person,
-          trip.commission_value,
-          trip.commission_type as 'fixed' | 'percentage'
-        )
-        
+      if (commissionCalc && selectedSellerId) {
         try {
           await createCommissionPayments(booking.id, selectedSellerId, commissionCalc, adminSupabase)
         } catch (commissionError) {
@@ -162,7 +168,7 @@ export async function POST(request: NextRequest) {
     }
 
     // OPTIMIZED: Clear admin bookings cache for this user
-    apiCache.clearPattern(`admin_bookings_${user.id}`)
+    apiCache.clearPattern(`admin_bookings_${userId}`)
 
     return NextResponse.json({ 
       success: true, 

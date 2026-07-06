@@ -4,25 +4,28 @@ import { NextRequest, NextResponse } from 'next/server'
 import { apiCache } from '@/lib/cache'
 
 // ฟังก์ชันสร้าง commission payment
-async function createCommissionPayment(adminSupabase: any, booking: any, paymentType: string) {
+// payment_type ต้องตรงกับที่ createCommissionPayments ใน commissionUtils ใช้
+// ('partial_commission' = 50% แรก, 'final_commission' = 50% หลัง)
+async function createCommissionPayment(
+  adminSupabase: any,
+  booking: any,
+  paymentType: 'partial_commission' | 'final_commission'
+) {
   // เช็คว่ามี commission payment ประเภทนี้อยู่แล้วหรือไม่
   const { data: existingPayment } = await adminSupabase
     .from('commission_payments')
     .select('id')
     .eq('booking_id', booking.id)
     .eq('payment_type', paymentType)
-    .single()
+    .maybeSingle()
 
   if (existingPayment) {
     // มีแล้วไม่ต้องสร้างใหม่
     return existingPayment
   }
 
-  // คำนวณจำนวนเงิน commission
-  const commissionAmount = booking.commission_amount || 0
-  const amount = paymentType === 'deposit_commission' 
-    ? Math.round(commissionAmount * 0.5) // 50%
-    : Math.round(commissionAmount * 0.5) // อีก 50%
+  // แบ่งครึ่งเท่ากันทั้งสองงวด (สอดคล้องกับ commissionUtils)
+  const amount = (booking.commission_amount || 0) / 2
 
   // สร้าง commission payment ใหม่
   const { data: newPayment, error } = await adminSupabase
@@ -71,8 +74,9 @@ export async function POST(request: NextRequest) {
     const supabase = await createClient()
 
     // Check if user is admin
-    const { data: { user } } = await supabase.auth.getUser()
-    if (!user) {
+    const { data: claims } = await supabase.auth.getClaims()
+    const userId = claims?.claims?.sub
+    if (!userId) {
       return NextResponse.json(
         { error: 'Unauthorized' },
         { status: 401 }
@@ -83,7 +87,7 @@ export async function POST(request: NextRequest) {
     const { data: profile } = await supabase
       .from('user_profiles')
       .select('role')
-      .eq('id', user.id)
+      .eq('id', userId)
       .single()
 
     if (!profile || profile.role !== 'admin') {
@@ -113,25 +117,27 @@ export async function POST(request: NextRequest) {
     }
 
     // OPTIMIZED: Clear admin bookings cache for this user
-    apiCache.clearPattern(`admin_bookings_${user.id}`)
+    apiCache.clearPattern(`admin_bookings_${userId}`)
 
     // จัดการ commission payments และข้อความตามสถานะ
     let commissionMessage = ''
     const updatedBooking = data[0]
     
     if (updatedBooking && updatedBooking.seller_id) {
+      // ล้าง cache ฝั่ง seller (dashboard stats / sold trips) ให้เห็นยอดใหม่ทันที
+      apiCache.clearPattern(updatedBooking.seller_id)
       try {
         switch (paymentStatus) {
           case 'partial':
             // จ่ายมัดจำแล้ว - จ่าย commission 50%
-            await createCommissionPayment(adminSupabase, updatedBooking, 'direct')
+            await createCommissionPayment(adminSupabase, updatedBooking, 'partial_commission')
             commissionMessage = ' และจ่าย Commission Seller 50% แล้ว'
             break
-            
+
           case 'completed':
             // จ่ายครบแล้ว - จ่าย commission 100%
-            await createCommissionPayment(adminSupabase, updatedBooking, 'direct')
-            await createCommissionPayment(adminSupabase, updatedBooking, 'referral')
+            await createCommissionPayment(adminSupabase, updatedBooking, 'partial_commission')
+            await createCommissionPayment(adminSupabase, updatedBooking, 'final_commission')
             commissionMessage = ' และจ่าย Commission Seller 100% แล้ว'
             break
             
