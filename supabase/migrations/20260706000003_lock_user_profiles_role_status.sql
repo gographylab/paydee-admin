@@ -1,4 +1,6 @@
--- ⚠️ NOT YET APPLIED TO THE LIVE DB — run in Supabase SQL Editor (or via Supabase MCP)
+-- APPLIED to the live DB via Supabase MCP on 2026-07-06
+-- (migration name: lock_user_profiles_role_status; the catalog-driven drop below
+-- removed the live INSERT policy "Anyone can insert profile", WITH CHECK (true))
 -- Security: the original policies let any authenticated user INSERT/UPDATE their own
 -- user_profiles row with an arbitrary role/status → self-promotion to admin via a
 -- direct PostgREST call (app-side fixes can't stop that). This locks role/status

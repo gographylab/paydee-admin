@@ -1,4 +1,6 @@
 -- APPLIED to the live DB via Supabase MCP on 2026-07-06
+-- ⚠️ INEFFECTIVE as applied: the default PUBLIC EXECUTE grant remained, so anon
+-- could still call everything — superseded by 20260706000004, which revokes PUBLIC.
 -- Security: these SECURITY DEFINER functions were callable by anon/authenticated
 -- via the REST API, but have no app or edge-function caller — they are internal
 -- (called from other SQL functions/triggers, which run as the function owner).
